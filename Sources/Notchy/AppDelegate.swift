@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let target: BarState = showAll ? .all : .expanded
         let items = scan()
+        Diagnostics.log("app", "toggle showAll=\(showAll) state=\(statusBar.state) toggle=\(Int(statusBar.toggleFrame?.minX ?? -1)) hidden=\(Int(statusBar.hiddenSpacerFrame?.minX ?? -1)) always=\(Int(statusBar.alwaysHiddenSpacerFrame?.minX ?? -1)) sections=\(items.map { "\($0.ownerName):\(section(of: $0))" })")
         let toReveal = items.filter { section(of: $0) == .hidden || (showAll && section(of: $0) == .alwaysHidden) }
         // Only the visible section between our hidden spacer and the toggle takes room from the hidden items;
         // system items right of the toggle are already outside `toggleMinX`.

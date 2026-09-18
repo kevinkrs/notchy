@@ -50,6 +50,10 @@ final class StatusBarController: NSObject {
         let lengths = Layout.spacerLengths(for: state)
         hiddenSpacer.length = lengths.hidden
         alwaysHiddenSpacer.length = lengths.alwaysHidden
+        // Divider glyph while the spacer is a real gap, blank while it is the 10000 pt pusher
+        // (the glyph would otherwise float somewhere in the middle of the pushed area).
+        hiddenSpacer.button?.image = lengths.hidden == Layout.spacerLength ? Self.divider("poweron") : Self.blank
+        alwaysHiddenSpacer.button?.image = lengths.alwaysHidden == Layout.spacerLength ? Self.divider("circle.dotted") : Self.blank
         toggle.button?.image = NSImage(systemSymbolName: state == .collapsed ? "chevron.left" : "chevron.right",
                                        accessibilityDescription: "Notchy")
     }
@@ -74,8 +78,14 @@ final class StatusBarController: NSObject {
         let alwaysHidden = bar.statusItem(withLength: Layout.spacerLength)
         alwaysHidden.autosaveName = names.alwaysHidden
         // macOS 26: an item without content gets a 0×0 window and pushes nothing. Any image fixes it.
-        for spacer in [hidden, alwaysHidden] { spacer.button?.image = NSImage(size: NSSize(width: 1, height: 1)) }
+        for spacer in [hidden, alwaysHidden] { spacer.button?.image = blank }
         return (toggle, hidden, alwaysHidden)
+    }
+
+    private static let blank = NSImage(size: NSSize(width: 1, height: 1))
+    private static func divider(_ symbol: String) -> NSImage? {
+        NSImage(systemSymbolName: symbol, accessibilityDescription: "Notchy divider")?
+            .withSymbolConfiguration(.init(pointSize: 11, weight: .light))
     }
 
     /// True when toggle is right of hidden spacer, which is right of always-hidden spacer (or frames unknown yet).
