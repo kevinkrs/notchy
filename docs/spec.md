@@ -27,23 +27,33 @@ spacers start left of the toggle.
 
 ## Toggle behaviour (auto mode)
 Click ⌃ while collapsed: scan items (`ItemScanner`), sum widths of hidden section, compare with
-`Layout.availableWidth` (left bound = `NSScreen.auxiliaryTopRightArea?.minX ?? screen.minX`).
+`Layout.availableWidth` (left bound = `NSScreen.auxiliaryTopRightArea?.minX ?? screen.minX`; only
+visible-section items left of the toggle count).
 - fits and `alwaysUseBar == false` → `setState(.expanded)`
-- else → `OverflowPanel.show` with hidden(+always hidden when ⌥) items and `ItemCapture` thumbnails
+- else → `OverflowPanel.show` with hidden(+always hidden when ⌥) items
 Click ⌃ while expanded/all or panel visible → collapse / hide panel.
 
 ## Overflow bar
 `NSPanel`, non-activating, level `.popUpMenu`, right-aligned under the toggle, one row of 22 pt-high
-thumbnails (wraps if wider than screen), hover highlight, dismiss on click-outside / Esc.
+cells (app icon + item title, wraps if wider than 80 % of the screen), hover highlight, dismiss on
+click-outside / Esc.
 Click → `ItemClicker.click`: reveal section, poll until item on screen, post CGEvent click at its centre.
-Still off screen (macOS overflow) → AX press fallback (menu may open at screen edge).
+Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).
 After a forwarded click the bar stays expanded until the user collapses it (`ponytail:`).
 
+## Item discovery (macOS 26 findings, verified 2026-09-18)
+- The window list is useless: every status item window on layer 25 is owned by Control Center, names are
+  "Item-0", and `NSStatusItem.button.window.windowNumber` is not a `CGWindowID` (64-bit, traps on conversion).
+- Off-screen (spacer-pushed) item windows cannot be captured: ScreenCaptureKit `desktopIndependentWindow`
+  fails with -3811, display filter returns a transparent image. Hence no thumbnails.
+- Items macOS itself drops behind the notch keep a positive x but are not on screen.
+- Therefore items come from Accessibility: per running app (`activationPolicy != .prohibited`, plus
+  Control Center) `AXExtrasMenuBar` → children with position/size/title; messaging timeout 0.2 s.
+  `isOnScreen` = frame inside `[leftBound, screen.maxX]`.
+
 ## Permissions
-- Screen Recording: thumbnails (`ScreenCaptureKit`, `SCContentFilter(desktopIndependentWindow:)`).
-  Without it: fall back to owner app icon + name.
-- Accessibility: synthetic clicks. Without it: clicking a thumbnail just expands the section.
-Both requested lazily on first use.
+- Accessibility only: item discovery, synthetic clicks, AX press. Requested on first toggle; until granted
+  the toggle simply expands in place (no fit check, no bar).
 
 ## Menu (right-click ⃣ toggle)
 Show/Hide Hidden Items · Show All Items · Always Use Bar ☐ · Launch at Login ☐ · Quit
@@ -53,10 +63,9 @@ Show/Hide Hidden Items · Show All Items · Always Use Bar ☐ · Launch at Logi
 |---|---|
 | `Core/Layout.swift` | `Section`, `BarState`, pure geometry (tested) |
 | `Core/MenuBarItem.swift` | value type for other apps' items |
-| `Core/ItemScanner.swift` | `CGWindowListCopyWindowInfo` layer 25 |
-| `Core/ItemCapture.swift` | ScreenCaptureKit thumbnails |
+| `Core/ItemScanner.swift` | AX scan of every app's `AXExtrasMenuBar` |
 | `Core/ItemClicker.swift` | click forwarding |
-| `System/Permissions.swift`, `System/LoginItem.swift` | TCC + login item |
+| `System/Permissions.swift`, `System/LoginItem.swift` | Accessibility TCC + login item |
 | `UI/StatusBarController.swift` | three status items, states, menu |
 | `UI/OverflowPanel.swift` | floating bar |
 | `AppDelegate.swift`, `main.swift` | wiring |

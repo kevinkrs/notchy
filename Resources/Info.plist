@@ -30,7 +30,5 @@
 	<string>NSApplication</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<key>NSScreenCaptureUsageDescription</key>
-	<string>Notchy captures menu bar item thumbnails to show hidden items in its overflow bar.</string>
 </dict>
 </plist>
