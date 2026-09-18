@@ -4,9 +4,11 @@ import ApplicationServices
 /// Finds other apps' menu bar extras through Accessibility. Needs the Accessibility permission;
 /// prompts and returns `[]` until granted.
 enum ItemScanner {
+    @MainActor private static var prompted = false
+
     static func scan() -> [MenuBarItem] {
         guard Permissions.hasAccessibility else {
-            Permissions.requestAccessibility()
+            if !prompted { Permissions.requestAccessibility(); prompted = true } // once per launch
             return []
         }
         let screen = NSScreen.main

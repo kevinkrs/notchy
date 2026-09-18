@@ -23,6 +23,8 @@ cp "$BIN" "$CONTENTS/MacOS/Notchy"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD__/$BUILD/g" Resources/Info.plist > "$CONTENTS/Info.plist"
 echo -n 'APPL????' > "$CONTENTS/PkgInfo"
 
-codesign --force --sign - --timestamp=none "$APP"
+# Ad-hoc signatures change with every build and invalidate TCC grants (Accessibility).
+# Set CODESIGN_ID to a stable identity, e.g. a self-signed "Notchy Dev" code-signing certificate.
+codesign --force --sign "${CODESIGN_ID:--}" --timestamp=none "$APP"
 
 echo "$ROOT/$APP"
