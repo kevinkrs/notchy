@@ -1,0 +1,42 @@
+import Testing
+@testable import Notchy
+
+// Command Line Tools ship Swift Testing but not XCTest.
+
+@Suite("Layout")
+struct LayoutTests {
+    @Test func collapsedPushesHiddenOnly() {
+        let l = Layout.spacerLengths(for: .collapsed)
+        #expect(l.hidden == Layout.pushLength && l.alwaysHidden == Layout.spacerLength)
+    }
+
+    @Test func expandedPushesAlwaysHiddenOnly() {
+        let l = Layout.spacerLengths(for: .expanded)
+        #expect(l.hidden == Layout.spacerLength && l.alwaysHidden == Layout.pushLength)
+    }
+
+    @Test func allPushesNothing() {
+        let l = Layout.spacerLengths(for: .all)
+        #expect(l.hidden == Layout.spacerLength && l.alwaysHidden == Layout.spacerLength)
+    }
+
+    @Test func sectionByPosition() {
+        // always-hidden spacer at 100, hidden spacer at 200
+        #expect(Layout.section(itemMinX: 50, hiddenSpacerMinX: 200, alwaysHiddenSpacerMinX: 100) == .alwaysHidden)
+        #expect(Layout.section(itemMinX: 150, hiddenSpacerMinX: 200, alwaysHiddenSpacerMinX: 100) == .hidden)
+        #expect(Layout.section(itemMinX: 250, hiddenSpacerMinX: 200, alwaysHiddenSpacerMinX: 100) == .visible)
+    }
+
+    @Test func sectionWorksWhilePushedOffScreen() {
+        // collapsed: everything left of the hidden spacer is at x < -9000
+        #expect(Layout.section(itemMinX: -9950, hiddenSpacerMinX: -9900, alwaysHiddenSpacerMinX: -9980) == .hidden)
+        #expect(Layout.section(itemMinX: -9990, hiddenSpacerMinX: -9900, alwaysHiddenSpacerMinX: -9980) == .alwaysHidden)
+    }
+
+    @Test func fitCalculation() {
+        let avail = Layout.availableWidth(toggleMinX: 1000, leftBound: 700, visibleWidths: [30, 30])
+        #expect(avail == 232)
+        #expect(Layout.fits(hiddenWidths: [100, 100], available: avail))
+        #expect(!Layout.fits(hiddenWidths: [100, 100, 40], available: avail))
+    }
+}

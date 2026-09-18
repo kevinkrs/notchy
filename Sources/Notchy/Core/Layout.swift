@@ -1,0 +1,50 @@
+import CoreGraphics
+
+/// Which of the three menu bar sections an item lives in. Defined purely by x-position
+/// relative to Notchy's two spacer status items.
+enum Section: Equatable {
+    case visible, hidden, alwaysHidden
+}
+
+/// What the user currently sees.
+enum BarState: Equatable {
+    /// Only the visible section (default).
+    case collapsed
+    /// Visible + hidden.
+    case expanded
+    /// Everything, including always-hidden.
+    case all
+}
+
+/// Pure geometry. No AppKit.
+enum Layout {
+    /// Spacer width when it is not pushing anything away.
+    static let spacerLength: CGFloat = 8
+    /// Spacer width that shoves everything left of it off screen (Hidden Bar / Ice trick).
+    static let pushLength: CGFloat = 10000
+
+    static func spacerLengths(for state: BarState) -> (hidden: CGFloat, alwaysHidden: CGFloat) {
+        switch state {
+        case .collapsed: return (pushLength, spacerLength)
+        case .expanded: return (spacerLength, pushLength)
+        case .all: return (spacerLength, spacerLength)
+        }
+    }
+
+    /// Order is preserved when a spacer pushes items off screen, so comparing minX works in every state.
+    static func section(itemMinX: CGFloat, hiddenSpacerMinX: CGFloat, alwaysHiddenSpacerMinX: CGFloat) -> Section {
+        if itemMinX < alwaysHiddenSpacerMinX { return .alwaysHidden }
+        if itemMinX < hiddenSpacerMinX { return .hidden }
+        return .visible
+    }
+
+    /// Horizontal room left for hidden items once expanded: from the left bound of the usable
+    /// menu bar area (right of the notch) to the toggle, minus what the visible section already uses.
+    static func availableWidth(toggleMinX: CGFloat, leftBound: CGFloat, visibleWidths: [CGFloat]) -> CGFloat {
+        toggleMinX - leftBound - visibleWidths.reduce(0, +) - spacerLength
+    }
+
+    static func fits(hiddenWidths: [CGFloat], available: CGFloat) -> Bool {
+        hiddenWidths.reduce(0, +) <= available
+    }
+}
