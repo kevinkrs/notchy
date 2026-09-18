@@ -31,12 +31,10 @@ final class StatusBarController: NSObject {
         }
         (toggle, hiddenSpacer, alwaysHiddenSpacer) = Self.makeItems()
         super.init()
-        if !orderIsValid {
-            // Hidden Bar trick: macOS ignored the seeds (e.g. stale defaults); force positions and recreate.
-            Diagnostics.log("statusbar", "status item order wrong, reseeding positions")
-            for item in [toggle, hiddenSpacer, alwaysHiddenSpacer] { NSStatusBar.system.removeStatusItem(item) }
-            Self.seedPositions()
-            (toggle, hiddenSpacer, alwaysHiddenSpacer) = Self.makeItems()
+        // Frames are placeholders until AppKit lays the items out; log the real order for diagnostics.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self else { return }
+            Diagnostics.log("statusbar", "order valid: \(self.orderIsValid) toggle=\(self.toggleFrame?.minX ?? -1) hidden=\(self.hiddenSpacerFrame?.minX ?? -1) always=\(self.alwaysHiddenSpacerFrame?.minX ?? -1)")
         }
         if let button = toggle.button {
             button.target = self
@@ -75,6 +73,8 @@ final class StatusBarController: NSObject {
         hidden.autosaveName = names.hidden
         let alwaysHidden = bar.statusItem(withLength: Layout.spacerLength)
         alwaysHidden.autosaveName = names.alwaysHidden
+        // macOS 26: an item without content gets a 0×0 window and pushes nothing. Any image fixes it.
+        for spacer in [hidden, alwaysHidden] { spacer.button?.image = NSImage(size: NSSize(width: 1, height: 1)) }
         return (toggle, hidden, alwaysHidden)
     }
 
