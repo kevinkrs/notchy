@@ -20,6 +20,7 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 
 cp "$BIN" "$CONTENTS/MacOS/Notchy"
+cp Resources/AppIcon.icns "$CONTENTS/Resources/AppIcon.icns"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__BUILD__/$BUILD/g" Resources/Info.plist > "$CONTENTS/Info.plist"
 echo -n 'APPL????' > "$CONTENTS/PkgInfo"
 
