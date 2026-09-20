@@ -46,12 +46,20 @@ Click → `ItemClicker.click`: reveal section, poll until item on screen, post C
 Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).
 After a forwarded click the bar stays expanded until the user collapses it (`ponytail:`).
 Cells are in menu bar order with a 1 pt separator where the section changes (always hidden ⸰ hidden).
-Right-click a cell → Move to Visible / Hidden / Always Hidden → collapse (400 ms), then `ItemMover.move`:
-Ice's recipe, ⌘-mouse-down at the item's frame, mouse-up at `destinationX` (hidden divider maxX+4 → visible,
-hidden divider minX−4 → hidden, always-hidden divider minX−4 → always hidden), both to `.cgSessionEventTap`,
-no dragged events, up to 3 attempts, cursor restored. The item need not be on screen: spacer-pushed windows
-are grabbable at their negative x. Items macOS drops behind the notch are NOT (tried 2026-09-20: frame
-unchanged), hence collapsing first. Show All reopens afterwards.
+Right-click a cell → Move to Visible / Hidden / Always Hidden → collapse (400 ms), then `ItemMover.move`,
+Ice's recipe (verified working on macOS 26.7, 2026-09-20; every simplification of it failed):
+- `CGEventSource(stateID: .hidSystemState)`, local-events filter permit-all for `remoteMouseDrag` and
+  `suppressionInterval`, interval 0.
+- Item window = layer-25 window (`CGWindowListCopyWindowInfo(.optionAll)`, includes off-screen) whose bounds
+  contain the item's AX frame; owner is Control Center on macOS 26.
+- ⌘-mouse-down at the bogus point (20000, 20000): routing is done purely by the stamped fields
+  `eventTargetUnixProcessID`, `mouseEventWindowUnderMousePointer(ThatCanHandleThisEvent)`, private field 0x33
+  (window id), `eventSourceUserData`. No hit test, so off-screen items work.
+- Mouse-up (no flags) at `destinationX` (hidden divider maxX+4 → visible, hidden divider minX−4 → hidden,
+  always-hidden divider minX−4 → always hidden), stamped with the window at that point (our spacer).
+- No dragged events. Posted to `.cgSessionEventTap` (odd attempts) / `postToPid` (even), 4 attempts, success =
+  frame changed. Cursor restored. Collapsing first keeps everything grabbable (nothing under the notch).
+  Show All reopens afterwards.
 
 ## Item discovery (macOS 26 findings, verified 2026-09-18)
 - The window list is useless: every status item window on layer 25 is owned by Control Center, names are
