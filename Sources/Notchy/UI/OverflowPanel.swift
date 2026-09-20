@@ -45,11 +45,16 @@ final class OverflowPanel {
     func show(items: [MenuBarItem], toggleFrame: CGRect, on screen: NSScreen, below: Bool = false) {
         content.subviews.filter { $0 !== backdrop }.forEach { $0.removeFromSuperview() }
         let pad: CGFloat = 6, gap: CGFloat = 4, rowH: CGFloat = 22
-        let cells = items.map { item in
+        // Cells in menu bar order, a thin separator wherever the section changes (⸰ always hidden | hidden).
+        var cells: [NSView] = []
+        var lastSection: Section?
+        for item in items {
+            if let s = currentSection?(item), let last = lastSection, s != last { cells.append(Separator()) }
+            lastSection = currentSection?(item)
             let cell = ItemCell(item: item)
             cell.onClick = { [weak self] in self?.onSelect?($0) }
             cell.onMenu = { [weak self] item, event in self?.showMoveMenu(for: item, event: event) }
-            return cell
+            cells.append(cell)
         }
         let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
 
@@ -69,7 +74,7 @@ final class OverflowPanel {
         backdrop.isHidden = false
         panel.hasShadow = true
         let maxRowWidth = screen.frame.width * 0.8
-        var rows: [[ItemCell]] = [[]]
+        var rows: [[NSView]] = [[]]
         var rowWidth: CGFloat = 0
         for cell in cells {
             let w = cell.frame.width
@@ -93,7 +98,7 @@ final class OverflowPanel {
     }
 
     /// Rows top-down, cells left-to-right. A single row is vertically centred in `height`.
-    private func layOut(_ rows: [[ItemCell]], gap: CGFloat, rowH: CGFloat, pad: CGFloat, height: CGFloat) {
+    private func layOut(_ rows: [[NSView]], gap: CGFloat, rowH: CGFloat, pad: CGFloat, height: CGFloat) {
         for (r, row) in rows.enumerated() {
             var x = pad
             let y = rows.count == 1 ? (height - rowH) / 2 : height - pad - rowH - CGFloat(r) * (rowH + gap)
@@ -159,6 +164,16 @@ private final class KeyPanel: NSPanel {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 { cancelOperation(self) } else { super.keyDown(with: event) }
     }
+}
+
+/// 1 pt vertical line between sections.
+private final class Separator: NSView {
+    init() {
+        super.init(frame: CGRect(x: 0, y: 0, width: 1, height: 22))
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.separatorColor.cgColor
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 }
 
 /// One menu bar item: 16 pt app icon with hover highlight, title in the tooltip.

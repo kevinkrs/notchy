@@ -70,22 +70,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Moving between sections
 
+    /// Collapse first: then nothing is dropped behind the notch, hidden sections are pushed to negative x
+    /// where their windows are still grabbable, and both dividers have stable frames. Reopens Show All
+    /// afterwards so the result is visible.
     private func move(_ item: MenuBarItem, to target: Section) {
         panel.hide()
         Task { @MainActor in
-            // ponytail: stays in .all afterwards so the result is visible; user collapses via the toggle.
-            await ItemMover.move(
-                item, to: target,
-                reveal: { self.statusBar.setState(.all) },
-                rescan: { self.scan().first { $0 == item } },
-                dividers: {
-                    guard let h = self.statusBar.hiddenSpacerFrame, let a = self.statusBar.alwaysHiddenSpacerFrame else { return nil }
-                    return .init(hidden: h, alwaysHidden: a)
-                })
-            try? await Task.sleep(for: .milliseconds(300))
-            if let after = self.scan().first(where: { $0 == item }) {
-                Diagnostics.log("app", "\(item.title) now in \(self.section(of: after)) at \(Int(after.frame.minX))")
+            if statusBar.state != .collapsed {
+                statusBar.setState(.collapsed)
+                try? await Task.sleep(for: .milliseconds(400))
             }
+            guard let h = statusBar.hiddenSpacerFrame, let a = statusBar.alwaysHiddenSpacerFrame else { return }
+            let moved = await ItemMover.move(
+                item, to: target, dividers: .init(hidden: h, alwaysHidden: a),
+                rescan: { self.scan().first { $0 == item } })
+            if let after = self.scan().first(where: { $0 == item }) {
+                Diagnostics.log("app", "\(item.title) moved=\(moved) now in \(self.section(of: after)) at \(Int(after.frame.minX))")
+            }
+            showAllInPanel()
         }
     }
 

@@ -39,4 +39,13 @@ struct LayoutTests {
         #expect(Layout.leftOfNotchX(area: area, appMenuMaxX: 300, width: 200) == 388)
         #expect(Layout.leftOfNotchX(area: area, appMenuMaxX: 300, width: 280) == nil) // 600-12-280 = 308 < 312
     }
+
+    @Test @MainActor func moveDestinations() {
+        // collapsed: hidden spacer is the 10000 pt pusher ending at the toggle, always-hidden spacer pushed far left
+        let d = ItemMover.Dividers(hidden: CGRect(x: -8818, y: 0, width: 10000, height: 24),
+                                   alwaysHidden: CGRect(x: -8840, y: 0, width: 8, height: 24))
+        #expect(ItemMover.destinationX(for: .visible, dividers: d) == 1186)       // right of the pusher, left of ⌃
+        #expect(ItemMover.destinationX(for: .hidden, dividers: d) == -8822)       // just left of the pusher
+        #expect(ItemMover.destinationX(for: .alwaysHidden, dividers: d) == -8844) // just left of ⸰
+    }
 }

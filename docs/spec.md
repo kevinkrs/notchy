@@ -45,11 +45,13 @@ dismiss on click-outside / Esc. Two placements, decided per show:
 Click → `ItemClicker.click`: reveal section, poll until item on screen, post CGEvent click at its centre.
 Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).
 After a forwarded click the bar stays expanded until the user collapses it (`ponytail:`).
-Right-click a cell → Move to Visible / Hidden / Always Hidden → `ItemMover.move`: go to `.all`, poll until the
-item is not spacer-pushed (x > -1000) and both dividers have frames, then a synthetic ⌘-drag (CGEvent with
-`maskCommand`: down on the item, 12 dragged steps, up just beside the target divider). Items macOS dropped
-behind the notch keep real frames under the notch (seen at x 651–715 on the 14"), so the grab is attempted
-there too; result logged as `[app] … now in <section>`. Stays in `.all` afterwards.
+Cells are in menu bar order with a 1 pt separator where the section changes (always hidden ⸰ hidden).
+Right-click a cell → Move to Visible / Hidden / Always Hidden → collapse (400 ms), then `ItemMover.move`:
+Ice's recipe, ⌘-mouse-down at the item's frame, mouse-up at `destinationX` (hidden divider maxX+4 → visible,
+hidden divider minX−4 → hidden, always-hidden divider minX−4 → always hidden), both to `.cgSessionEventTap`,
+no dragged events, up to 3 attempts, cursor restored. The item need not be on screen: spacer-pushed windows
+are grabbable at their negative x. Items macOS drops behind the notch are NOT (tried 2026-09-20: frame
+unchanged), hence collapsing first. Show All reopens afterwards.
 
 ## Item discovery (macOS 26 findings, verified 2026-09-18)
 - The window list is useless: every status item window on layer 25 is owned by Control Center, names are
