@@ -3,9 +3,9 @@
 Tiny Bartender / Ice replacement. Hides menu bar items, three sections, overflow bar so nothing vanishes behind the notch.
 
 ## Use
-- Click `»` to show hidden items. As many as fit appear right of the notch; the rest appear in the free
-  menu bar space left of the notch (or below the menu bar if there is no room). Click one to use it.
-- Right-click `»` → Show All Items: every hidden and always-hidden item in a bar below the menu bar.
+- Click `»` to show hidden items. As many as fit appear right of the notch.
+- Right-click `»` → Show All Items: every hidden and always-hidden item as icons in a bar below the menu bar
+  (hover for the name). Click one to use it.
 - To arrange: `⌥`-click `»` (shows everything in place, both dividers visible), then `⌘`-drag items:
   `[always hidden] ⸰ [hidden] | [visible] »`. Dragging while a section is collapsed lands items in the wrong section.
 - Right-click `»`: Always Use Bar, Launch at Login, Quit.

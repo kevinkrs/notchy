@@ -26,17 +26,15 @@ macOS remembers positions. First launch seeds `NSStatusItem Preferred Position <
 spacers start left of the toggle.
 
 ## Toggle behaviour
-Click ⌃ while collapsed → `setState(.expanded)`: macOS shows as many hidden items as fit right of the notch.
-400 ms later rescan (`showDroppedItems`); items still off screen (macOS dropped them behind the notch) go
-into the bar left of the notch. ⌥-click → same with `.all` (arrange mode: both dividers visible for ⌘-drag).
-`alwaysUseBar` → hidden items go straight to the bar, nothing expands.
+Click ⌃ while collapsed → `setState(.expanded)`: macOS shows as many hidden items as fit right of the notch,
+the rest stay behind the notch (reachable via Show All). ⌥-click → same with `.all` (arrange mode: both
+dividers visible for ⌘-drag). `alwaysUseBar` → hidden items go to the bar left of the notch, nothing expands.
 Click ⌃ while expanded/all or panel visible → collapse / hide panel.
 Right-click → "Show All Items": every hidden + always-hidden item in the panel *below* the toggle
 (`below: true`), menu bar untouched. Without Accessibility the toggle simply expands in place.
 
 ## Overflow bar
-`NSPanel`, non-activating, level `.popUpMenu`, 22 pt-high cells (app icon, plus title when it differs from the
-app name; title in tooltip), hover highlight,
+`NSPanel`, non-activating, level `.popUpMenu`, 22 pt square cells (app icon, title in tooltip), hover highlight,
 dismiss on click-outside / Esc. Two placements, decided per show:
 1. **Left of the notch, inside the menu bar** (Ice / Bartender style): one row, no backdrop, menu-bar height,
    right-aligned to `auxiliaryTopLeftArea.maxX` with `Layout.notchGap` clear of the notch and of the frontmost

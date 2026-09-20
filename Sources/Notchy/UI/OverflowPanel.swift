@@ -1,6 +1,6 @@
 import AppKit
 
-/// Bar showing hidden items as icon + title. Items that would vanish behind the notch (too many to
+/// Bar showing hidden items as app icons. Items that would vanish behind the notch (too many to
 /// fit) are always reachable here. Preferred placement: inside the menu bar, in the free strip left of
 /// the notch (like Ice / Bartender). Fallback: floating panel just below the menu bar under the toggle.
 @MainActor
@@ -135,8 +135,7 @@ private final class KeyPanel: NSPanel {
     }
 }
 
-/// One menu bar item: 16 pt app icon, plus title when it says more than the app name (Control Center's
-/// "Wi‑Fi" / "Battery"), with hover highlight. Title always in the tooltip.
+/// One menu bar item: 16 pt app icon with hover highlight, title in the tooltip.
 private final class ItemCell: NSView {
     let item: MenuBarItem
     var onClick: ((MenuBarItem) -> Void)?
@@ -151,17 +150,7 @@ private final class ItemCell: NSView {
         icon.image = item.icon
         addSubview(icon)
         toolTip = item.title
-        var labelWidth: CGFloat = 0
-        if item.title != item.ownerName {
-            let label = NSTextField(labelWithString: item.title)
-            label.font = .menuBarFont(ofSize: 0)
-            label.lineBreakMode = .byTruncatingTail
-            label.sizeToFit()
-            labelWidth = min(label.frame.width, 140) + 3
-            label.frame = CGRect(x: 22, y: (h - label.frame.height) / 2, width: labelWidth - 3, height: label.frame.height)
-            addSubview(label)
-        }
-        frame.size = CGSize(width: 22 + labelWidth, height: h)
+        frame.size = CGSize(width: h, height: h)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
     }
