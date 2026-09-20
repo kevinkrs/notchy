@@ -54,7 +54,7 @@ final class StatusBarController: NSObject {
         // (the glyph would otherwise float somewhere in the middle of the pushed area).
         hiddenSpacer.button?.image = lengths.hidden == Layout.spacerLength ? Self.divider("poweron") : Self.blank
         alwaysHiddenSpacer.button?.image = lengths.alwaysHidden == Layout.spacerLength ? Self.divider("circle.dotted") : Self.blank
-        toggle.button?.image = NSImage(systemSymbolName: state == .collapsed ? "chevron.left" : "chevron.right",
+        toggle.button?.image = NSImage(systemSymbolName: state == .collapsed ? "chevron.left.2" : "chevron.right.2",
                                        accessibilityDescription: "Notchy")
     }
 

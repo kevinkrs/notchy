@@ -45,6 +45,21 @@ enum ItemScanner {
         return items
     }
 
+    /// Right edge (Quartz x) of the frontmost app's last menu title, i.e. where the free menu bar space
+    /// left of the notch begins. `nil` without permission or when the app exposes no menu bar.
+    static func frontmostMenuMaxX() -> CGFloat? {
+        guard Permissions.hasAccessibility, let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(axApp, 0.2)
+        guard let bar: AXUIElement = attribute(axApp, kAXMenuBarAttribute),
+              let children: [AXUIElement] = attribute(bar, kAXChildrenAttribute) else { return nil }
+        return children.compactMap { child -> CGFloat? in
+            guard let origin: CGPoint = value(child, kAXPositionAttribute, .cgPoint),
+                  let size: CGSize = value(child, kAXSizeAttribute, .cgSize) else { return nil }
+            return origin.x + size.width
+        }.max()
+    }
+
     private static func attribute<T>(_ element: AXUIElement, _ name: String) -> T? {
         var out: AnyObject?
         guard AXUIElementCopyAttributeValue(element, name as CFString, &out) == .success else { return nil }

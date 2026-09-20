@@ -1,7 +1,8 @@
 import AppKit
 
-/// Floating bar just below the menu bar showing hidden items as icon + title. Items that would
-/// vanish behind the notch (too many to fit) are always reachable here.
+/// Bar showing hidden items as icon + title. Items that would vanish behind the notch (too many to
+/// fit) are always reachable here. Preferred placement: inside the menu bar, in the free strip left of
+/// the notch (like Ice / Bartender). Fallback: floating panel just below the menu bar under the toggle.
 @MainActor
 final class OverflowPanel {
     var onSelect: ((MenuBarItem) -> Void)?
@@ -9,7 +10,8 @@ final class OverflowPanel {
     var isVisible: Bool { panel.isVisible }
 
     private let panel: KeyPanel
-    private let content = NSVisualEffectView()
+    private let content = NSView()
+    private let backdrop = NSVisualEffectView()
     private var monitor: Any?
 
     init() {
@@ -23,29 +25,49 @@ final class OverflowPanel {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        content.material = .menu
-        content.blendingMode = .behindWindow
-        content.state = .active
-        content.wantsLayer = true
-        content.layer?.cornerRadius = 10
-        content.layer?.masksToBounds = true
+        backdrop.material = .menu
+        backdrop.blendingMode = .behindWindow
+        backdrop.state = .active
+        backdrop.wantsLayer = true
+        backdrop.layer?.cornerRadius = 10
+        backdrop.layer?.masksToBounds = true
+        backdrop.autoresizingMask = [.width, .height]
+        content.addSubview(backdrop)
         panel.contentView = content
         panel.onCancel = { [weak self] in self?.dismiss() }
     }
 
-    /// Shows (or refreshes) the panel right-aligned under `toggleFrame` (AppKit coords) on `screen`.
-    /// Each cell is `item.icon` + `item.title`.
+    /// Shows (or refreshes) the bar. Left of the notch inside the menu bar when everything fits in one
+    /// row there, else right-aligned under `toggleFrame` (AppKit coords) on `screen`.
     func show(items: [MenuBarItem], toggleFrame: CGRect, on screen: NSScreen) {
-        content.subviews.forEach { $0.removeFromSuperview() }
+        content.subviews.filter { $0 !== backdrop }.forEach { $0.removeFromSuperview() }
         let pad: CGFloat = 6, gap: CGFloat = 4, rowH: CGFloat = 22
-        let maxRowWidth = screen.frame.width * 0.8
-
-        // Greedy wrap into rows.
-        var rows: [[ItemCell]] = [[]]
-        var rowWidth: CGFloat = 0
-        for item in items {
+        let cells = items.map { item in
             let cell = ItemCell(item: item)
             cell.onClick = { [weak self] in self?.onSelect?($0) }
+            return cell
+        }
+        let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
+
+        // 1. Menu bar strip left of the notch: one row, no backdrop, looks like native items.
+        let oneRow = cells.reduce(0) { $0 + $1.frame.width } + gap * CGFloat(max(cells.count - 1, 0))
+        if let area = screen.auxiliaryTopLeftArea,
+           let x = Layout.leftOfNotchX(area: area, appMenuMaxX: ItemScanner.frontmostMenuMaxX() ?? area.minX, width: oneRow) {
+            backdrop.isHidden = true
+            panel.hasShadow = false
+            layOut([cells], gap: gap, rowH: rowH, pad: 0, height: menuBarHeight)
+            panel.setFrame(CGRect(x: x, y: screen.frame.maxY - menuBarHeight, width: oneRow, height: menuBarHeight), display: true)
+            Diagnostics.log("panel", "left of notch at \(Int(x)) width \(Int(oneRow))")
+            return present()
+        }
+
+        // 2. Floating panel below the menu bar: greedy wrap into rows.
+        backdrop.isHidden = false
+        panel.hasShadow = true
+        let maxRowWidth = screen.frame.width * 0.8
+        var rows: [[ItemCell]] = [[]]
+        var rowWidth: CGFloat = 0
+        for cell in cells {
             let w = cell.frame.width
             if rowWidth > 0, rowWidth + gap + w > maxRowWidth { rows.append([]); rowWidth = 0 }
             rows[rows.count - 1].append(cell)
@@ -56,22 +78,30 @@ final class OverflowPanel {
         }
         let width = (rowWidths.max() ?? 0) + 2 * pad
         let height = CGFloat(rows.count) * rowH + CGFloat(rows.count - 1) * gap + 2 * pad
+        layOut(rows, gap: gap, rowH: rowH, pad: pad, height: height)
+
+        let visible = screen.visibleFrame
+        var origin = CGPoint(x: toggleFrame.maxX - width, y: screen.frame.maxY - menuBarHeight - 4 - height)
+        origin.x = min(max(origin.x, visible.minX), visible.maxX - width)
+        origin.y = max(origin.y, visible.minY)
+        panel.setFrame(CGRect(origin: origin, size: CGSize(width: width, height: height)), display: true)
+        present()
+    }
+
+    /// Rows top-down, cells left-to-right. A single row is vertically centred in `height`.
+    private func layOut(_ rows: [[ItemCell]], gap: CGFloat, rowH: CGFloat, pad: CGFloat, height: CGFloat) {
         for (r, row) in rows.enumerated() {
             var x = pad
-            let y = height - pad - rowH - CGFloat(r) * (rowH + gap)
+            let y = rows.count == 1 ? (height - rowH) / 2 : height - pad - rowH - CGFloat(r) * (rowH + gap)
             for cell in row {
                 cell.frame.origin = CGPoint(x: x, y: y)
                 content.addSubview(cell)
                 x += cell.frame.width + gap
             }
         }
+    }
 
-        let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
-        let visible = screen.visibleFrame
-        var origin = CGPoint(x: toggleFrame.maxX - width, y: screen.frame.maxY - menuBarHeight - 4 - height)
-        origin.x = min(max(origin.x, visible.minX), visible.maxX - width)
-        origin.y = max(origin.y, visible.minY)
-        panel.setFrame(CGRect(origin: origin, size: CGSize(width: width, height: height)), display: true)
+    private func present() {
         panel.orderFrontRegardless()
         panel.makeKey()
 

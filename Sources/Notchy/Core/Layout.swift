@@ -47,4 +47,15 @@ enum Layout {
     static func fits(hiddenWidths: [CGFloat], available: CGFloat) -> Bool {
         hiddenWidths.reduce(0, +) <= available
     }
+
+    /// Gap kept between the frontmost app's last menu title and the bar, and between the bar and the notch.
+    static let notchGap: CGFloat = 12
+
+    /// Origin x of a `width`-wide bar drawn inside the menu bar left of the notch (`area` =
+    /// `NSScreen.auxiliaryTopLeftArea`), right-aligned to the notch and clear of the app menus
+    /// (which end at `appMenuMaxX`). `nil` when it would not fit.
+    static func leftOfNotchX(area: CGRect, appMenuMaxX: CGFloat, width: CGFloat) -> CGFloat? {
+        let x = area.maxX - notchGap - width
+        return x >= appMenuMaxX + notchGap ? x : nil
+    }
 }

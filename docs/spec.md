@@ -34,9 +34,14 @@ visible-section items left of the toggle count).
 Click ⌃ while expanded/all or panel visible → collapse / hide panel.
 
 ## Overflow bar
-`NSPanel`, non-activating, level `.popUpMenu`, right-aligned under the toggle, one row of 22 pt-high
-cells (app icon + item title, wraps if wider than 80 % of the screen), hover highlight, dismiss on
-click-outside / Esc.
+`NSPanel`, non-activating, level `.popUpMenu`, 22 pt-high cells (app icon + item title), hover highlight,
+dismiss on click-outside / Esc. Two placements, decided per show:
+1. **Left of the notch, inside the menu bar** (Ice / Bartender style): one row, no backdrop, menu-bar height,
+   right-aligned to `auxiliaryTopLeftArea.maxX` with `Layout.notchGap` clear of the notch and of the frontmost
+   app's last menu title (`ItemScanner.frontmostMenuMaxX`, AX `AXMenuBar`). `Layout.leftOfNotchX` returns
+   `nil` when the row does not fit.
+2. **Fallback** (no notch, or does not fit): right-aligned under the toggle, wraps if wider than 80 % of the
+   screen, translucent backdrop.
 Click → `ItemClicker.click`: reveal section, poll until item on screen, post CGEvent click at its centre.
 Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).
 After a forwarded click the bar stays expanded until the user collapses it (`ponytail:`).

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 @testable import Notchy
 
@@ -38,5 +39,11 @@ struct LayoutTests {
         #expect(avail == 232)
         #expect(Layout.fits(hiddenWidths: [100, 100], available: avail))
         #expect(!Layout.fits(hiddenWidths: [100, 100, 40], available: avail))
+    }
+
+    @Test func leftOfNotchPlacement() {
+        let area = CGRect(x: 0, y: 0, width: 600, height: 37) // left of notch, notch starts at 600
+        #expect(Layout.leftOfNotchX(area: area, appMenuMaxX: 300, width: 200) == 388)
+        #expect(Layout.leftOfNotchX(area: area, appMenuMaxX: 300, width: 280) == nil) // 600-12-280 = 308 < 312
     }
 }
