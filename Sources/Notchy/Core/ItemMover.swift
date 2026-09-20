@@ -27,24 +27,32 @@ enum ItemMover {
         let targetX = destinationX(for: section, dividers: dividers)
         let cursor = NSEvent.mouseLocation
         defer { restoreCursor(cursor) }
+        // Ice's recipe verbatim: HID-state source, local event filter permitting everything while the
+        // synthetic drag is in flight, mouse-down at a bogus far-away point (routing is done purely by the
+        // stamped window fields, no hit test), mouse-up at the destination stamped with the window there.
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return false }
+        let permitAll: CGEventFilterMask = [.permitLocalMouseEvents, .permitLocalKeyboardEvents, .permitSystemDefinedEvents]
+        source.setLocalEventsFilterDuringSuppressionState(permitAll, state: .eventSuppressionStateRemoteMouseDrag)
+        source.setLocalEventsFilterDuringSuppressionState(permitAll, state: .eventSuppressionStateSuppressionInterval)
+        source.localEventsSuppressionInterval = 0
         for attempt in 1...4 {
             guard let fresh = rescan() else { return false }
             let from = CGPoint(x: fresh.frame.midX, y: fresh.frame.midY)
-            // WindowServer will not hit-test an off-screen window; Ice's trick is to stamp the event with
-            // the target window and its owner (Control Center on macOS 26) so routing needs no hit test.
+            let to = CGPoint(x: targetX, y: from.y)
             guard let win = statusWindow(at: from) else {
                 Diagnostics.log("mover", "\(fresh.title): no status window at \(Int(from.x))")
                 return false
             }
+            let destWin = statusWindow(at: to) ?? win
             let viaPid = attempt.isMultiple(of: 2) // odd attempts: session tap (Ice); even: straight to the owner
-            Diagnostics.log("mover", "\(fresh.title) #\(attempt) from \(Int(from.x)) to \(Int(targetX)) [\(section)] win=\(win.id) pid=\(win.pid) \(viaPid ? "postToPid" : "session")")
-            post(.leftMouseDown, from, flags: .maskCommand, window: win, viaPid: viaPid)
+            Diagnostics.log("mover", "\(fresh.title) #\(attempt) from \(Int(from.x)) to \(Int(targetX)) [\(section)] win=\(win.id)→\(destWin.id) pid=\(win.pid) \(viaPid ? "postToPid" : "session")")
+            post(.leftMouseDown, CGPoint(x: 20_000, y: 20_000), flags: .maskCommand, window: win, pid: win.pid, source: source, viaPid: viaPid)
             // Wait for the grab to register (Ice: frame change within 50 ms).
             for _ in 0..<5 {
                 try? await Task.sleep(for: .milliseconds(20))
                 if rescan()?.frame != fresh.frame { break }
             }
-            post(.leftMouseUp, CGPoint(x: targetX, y: from.y), flags: [], window: win, viaPid: viaPid)
+            post(.leftMouseUp, to, flags: [], window: destWin, pid: win.pid, source: source, viaPid: viaPid)
             try? await Task.sleep(for: .milliseconds(150))
             if let after = rescan(), after.frame.minX != fresh.frame.minX {
                 Diagnostics.log("mover", "\(fresh.title) moved to \(Int(after.frame.minX))")
@@ -71,13 +79,16 @@ enum ItemMover {
         return nil
     }
 
-    private static func post(_ type: CGEventType, _ p: CGPoint, flags: CGEventFlags, window: StatusWindow, viaPid: Bool) {
-        guard let e = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: p, mouseButton: .left) else { return }
+    private static func post(_ type: CGEventType, _ p: CGPoint, flags: CGEventFlags, window: StatusWindow, pid: pid_t,
+                             source: CGEventSource, viaPid: Bool) {
+        guard let e = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: p, mouseButton: .left) else { return }
         e.flags = flags
-        e.setIntegerValueField(.eventTargetUnixProcessID, value: Int64(window.pid))
+        e.setIntegerValueField(.eventTargetUnixProcessID, value: Int64(pid))
+        e.setIntegerValueField(.eventSourceUserData, value: Int64(truncatingIfNeeded: Int(bitPattern: ObjectIdentifier(e))))
         e.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(window.id))
         e.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(window.id))
-        if viaPid { e.postToPid(window.pid) } else { e.post(tap: .cgSessionEventTap) }
+        e.setIntegerValueField(CGEventField(rawValue: 0x33)!, value: Int64(window.id)) // private "windowID" field Ice sets
+        if viaPid { e.postToPid(pid) } else { e.post(tap: .cgSessionEventTap) }
     }
 
     /// `NSEvent.mouseLocation` is AppKit (bottom-left origin); warp wants Quartz.
