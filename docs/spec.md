@@ -45,6 +45,11 @@ dismiss on click-outside / Esc. Two placements, decided per show:
 Click → `ItemClicker.click`: reveal section, poll until item on screen, post CGEvent click at its centre.
 Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).
 After a forwarded click the bar stays expanded until the user collapses it (`ponytail:`).
+Right-click a cell → Move to Visible / Hidden / Always Hidden → `ItemMover.move`: go to `.all`, poll until the
+item is not spacer-pushed (x > -1000) and both dividers have frames, then a synthetic ⌘-drag (CGEvent with
+`maskCommand`: down on the item, 12 dragged steps, up just beside the target divider). Items macOS dropped
+behind the notch keep real frames under the notch (seen at x 651–715 on the 14"), so the grab is attempted
+there too; result logged as `[app] … now in <section>`. Stays in `.all` afterwards.
 
 ## Item discovery (macOS 26 findings, verified 2026-09-18)
 - The window list is useless: every status item window on layer 25 is owned by Control Center, names are
@@ -70,6 +75,7 @@ Show/Hide Hidden Items · Show All Items · Always Use Bar ☐ · Launch at Logi
 | `Core/MenuBarItem.swift` | value type for other apps' items |
 | `Core/ItemScanner.swift` | AX scan of every app's `AXExtrasMenuBar` |
 | `Core/ItemClicker.swift` | click forwarding |
+| `Core/ItemMover.swift` | section moves via synthetic ⌘-drag |
 | `System/Permissions.swift`, `System/LoginItem.swift` | Accessibility TCC + login item |
 | `UI/StatusBarController.swift` | three status items, states, menu |
 | `UI/OverflowPanel.swift` | floating bar |

@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar.onToggle = { [weak self] showAll in self?.toggle(showAll: showAll) }
         statusBar.onShowAll = { [weak self] in self?.showAllInPanel() }
         panel.onSelect = { [weak self] item in self?.forward(item) }
+        panel.onMove = { [weak self] item, section in self?.move(item, to: section) }
+        panel.currentSection = { [weak self] item in self?.section(of: item) ?? .visible }
         panel.onDismiss = { [weak self] in
             // Panel closed without a click: nothing was revealed, stay collapsed.
             if self?.statusBar.state == .collapsed { self?.statusBar.setState(.collapsed) }
@@ -63,6 +65,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 item,
                 reveal: { self.statusBar.setState(target) },
                 rescan: { self.scan().first { $0 == item } })
+        }
+    }
+
+    // MARK: - Moving between sections
+
+    private func move(_ item: MenuBarItem, to target: Section) {
+        panel.hide()
+        Task { @MainActor in
+            // ponytail: stays in .all afterwards so the result is visible; user collapses via the toggle.
+            await ItemMover.move(
+                item, to: target,
+                reveal: { self.statusBar.setState(.all) },
+                rescan: { self.scan().first { $0 == item } },
+                dividers: {
+                    guard let h = self.statusBar.hiddenSpacerFrame, let a = self.statusBar.alwaysHiddenSpacerFrame else { return nil }
+                    return .init(hidden: h, alwaysHidden: a)
+                })
+            try? await Task.sleep(for: .milliseconds(300))
+            if let after = self.scan().first(where: { $0 == item }) {
+                Diagnostics.log("app", "\(item.title) now in \(self.section(of: after)) at \(Int(after.frame.minX))")
+            }
         }
     }
 

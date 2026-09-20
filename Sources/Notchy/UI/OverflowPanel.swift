@@ -6,6 +6,9 @@ import AppKit
 @MainActor
 final class OverflowPanel {
     var onSelect: ((MenuBarItem) -> Void)?
+    /// Right-click → "Move to …". `currentSection` marks the item's section in the menu.
+    var onMove: ((MenuBarItem, Section) -> Void)?
+    var currentSection: ((MenuBarItem) -> Section)?
     var onDismiss: (() -> Void)?
     var isVisible: Bool { panel.isVisible }
 
@@ -45,6 +48,7 @@ final class OverflowPanel {
         let cells = items.map { item in
             let cell = ItemCell(item: item)
             cell.onClick = { [weak self] in self?.onSelect?($0) }
+            cell.onMenu = { [weak self] item, event in self?.showMoveMenu(for: item, event: event) }
             return cell
         }
         let menuBarHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
@@ -112,6 +116,21 @@ final class OverflowPanel {
         }
     }
 
+    private func showMoveMenu(for item: MenuBarItem, event: NSEvent) {
+        let menu = NSMenu()
+        let current = currentSection?(item)
+        for (title, section) in [("Move to Visible", Section.visible), ("Move to Hidden", .hidden), ("Move to Always Hidden", .alwaysHidden)] {
+            let mi = NSMenuItem(title: title, action: #selector(MoveAction.fire), keyEquivalent: "")
+            let action = MoveAction { [weak self] in self?.onMove?(item, section) }
+            mi.target = action
+            mi.representedObject = action // keeps the target alive as long as the menu item
+            mi.state = section == current ? .on : .off
+            mi.isEnabled = section != current
+            menu.addItem(mi)
+        }
+        NSMenu.popUpContextMenu(menu, with: event, for: content)
+    }
+
     func hide() {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
@@ -123,6 +142,13 @@ final class OverflowPanel {
         hide()
         onDismiss?()
     }
+}
+
+/// Closure holder so an `NSMenuItem` can target a Swift closure.
+private final class MoveAction: NSObject {
+    let run: () -> Void
+    init(_ run: @escaping () -> Void) { self.run = run }
+    @objc func fire() { run() }
 }
 
 /// Borderless panels refuse key status by default; we need it so Esc reaches `cancelOperation`.
@@ -139,6 +165,7 @@ private final class KeyPanel: NSPanel {
 private final class ItemCell: NSView {
     let item: MenuBarItem
     var onClick: ((MenuBarItem) -> Void)?
+    var onMenu: ((MenuBarItem, NSEvent) -> Void)?
 
     init(item: MenuBarItem) {
         self.item = item
@@ -162,4 +189,5 @@ private final class ItemCell: NSView {
     }
     override func mouseExited(with event: NSEvent) { layer?.backgroundColor = nil }
     override func mouseUp(with event: NSEvent) { onClick?(item) }
+    override func rightMouseDown(with event: NSEvent) { onMenu?(item, event) }
 }
