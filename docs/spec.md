@@ -32,6 +32,8 @@ visible-section items left of the toggle count).
 - fits and `alwaysUseBar == false` → `setState(.expanded)`
 - else → `OverflowPanel.show` with hidden(+always hidden when ⌥) items
 Click ⌃ while expanded/all or panel visible → collapse / hide panel.
+After expanding in place, rescan once (400 ms) and show items macOS still dropped behind the notch in the bar
+(`showDroppedItems`; always-hidden items are ignored in `.expanded` since the spacer pushes them on purpose).
 
 ## Overflow bar
 `NSPanel`, non-activating, level `.popUpMenu`, 22 pt-high cells (app icon + item title), hover highlight,

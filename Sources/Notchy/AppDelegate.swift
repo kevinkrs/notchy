@@ -34,12 +34,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let toggleMinX = statusBar.toggleFrame?.minX ?? .greatestFiniteMagnitude
         let visible = items.filter { section(of: $0) == .visible && $0.frame.minX < toggleMinX }
 
-        if !statusBar.alwaysUseBar, fits(toReveal, visible: visible) {
+        if toReveal.isEmpty || (!statusBar.alwaysUseBar && fits(toReveal, visible: visible)) {
             statusBar.setState(target)
+            showDroppedItems(after: target)
             return
         }
-        if toReveal.isEmpty { statusBar.setState(target); return }
         showPanel(toReveal)
+    }
+
+    /// Safety net after expanding in place: macOS silently drops the leftmost items behind the notch when
+    /// the row is too long (AX widths can lie, Control Center items grow). Rescan once layout settled and
+    /// put anything still off screen into the bar. In `.expanded` the always-hidden section is legitimately
+    /// pushed away and must not count.
+    private func showDroppedItems(after state: BarState) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard statusBar.state == state, !panel.isVisible else { return }
+            let dropped = scan().filter { !$0.isOnScreen && (state == .all || section(of: $0) != .alwaysHidden) }
+            Diagnostics.log("app", "dropped after \(state): \(dropped.map(\.title))")
+            if !dropped.isEmpty { showPanel(dropped) }
+        }
     }
 
     private func fits(_ hidden: [MenuBarItem], visible: [MenuBarItem]) -> Bool {

@@ -10,6 +10,7 @@ enum ItemScanner {
     static func scan() -> [MenuBarItem] {
         guard Permissions.hasAccessibility else {
             if !prompted { Permissions.requestAccessibility(); prompted = true } // once per launch
+            Diagnostics.log("scan", "no Accessibility permission (re-grant after an ad-hoc rebuild)")
             return []
         }
         let screen = NSScreen.main
