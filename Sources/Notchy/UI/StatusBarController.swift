@@ -9,6 +9,8 @@ final class StatusBarController: NSObject {
     /// Left click on the toggle. `showAll` is true when ⌥ was held. The delegate decides what
     /// to do (expand in place vs. open the overflow bar) and calls `setState`.
     var onToggle: ((_ showAll: Bool) -> Void)?
+    /// Right-click menu "Show All Items": everything in the panel below the toggle.
+    var onShowAll: (() -> Void)?
     /// Right-click menu item "Always Use Bar". Persisted in UserDefaults.
     var alwaysUseBar: Bool {
         get { UserDefaults.standard.bool(forKey: "alwaysUseBar") }
@@ -124,7 +126,7 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func toggleHidden() { onToggle?(false) }
-    @objc private func showAll() { onToggle?(true) }
+    @objc private func showAll() { onShowAll?() }
     @objc private func toggleAlwaysUseBar() { alwaysUseBar.toggle() }
     @objc private func toggleLoginItem() { LoginItem.set(!LoginItem.isEnabled) }
 }

@@ -34,13 +34,6 @@ struct LayoutTests {
         #expect(Layout.section(itemMinX: -9990, hiddenSpacerMinX: -9900, alwaysHiddenSpacerMinX: -9980) == .alwaysHidden)
     }
 
-    @Test func fitCalculation() {
-        let avail = Layout.availableWidth(toggleMinX: 1000, leftBound: 700, visibleWidths: [30, 30])
-        #expect(avail == 232)
-        #expect(Layout.fits(hiddenWidths: [100, 100], available: avail))
-        #expect(!Layout.fits(hiddenWidths: [100, 100, 40], available: avail))
-    }
-
     @Test func leftOfNotchPlacement() {
         let area = CGRect(x: 0, y: 0, width: 600, height: 37) // left of notch, notch starts at 600
         #expect(Layout.leftOfNotchX(area: area, appMenuMaxX: 300, width: 200) == 388)

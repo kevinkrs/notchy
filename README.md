@@ -3,12 +3,12 @@
 Tiny Bartender / Ice replacement. Hides menu bar items, three sections, overflow bar so nothing vanishes behind the notch.
 
 ## Use
-- To arrange: `⌥`-click `⌃` first (shows everything, both dividers visible), then `⌘`-drag items:
-  `[always hidden] ⸰ [hidden] | [visible] ⌃`. Dragging while a section is collapsed lands items in the wrong section.
-- Click `⌃` to show hidden items. `⌥`-click shows always-hidden too.
-- Too many items to fit? Notchy shows them in the free menu bar space left of the notch instead (below the menu
-  bar if that space is too small or there is no notch). Click one to use it.
-- Right-click `⌃`: Always Use Bar, Launch at Login, Quit.
+- Click `»` to show hidden items. As many as fit appear right of the notch; the rest appear in the free
+  menu bar space left of the notch (or below the menu bar if there is no room). Click one to use it.
+- Right-click `»` → Show All Items: every hidden and always-hidden item in a bar below the menu bar.
+- To arrange: `⌥`-click `»` (shows everything in place, both dividers visible), then `⌘`-drag items:
+  `[always hidden] ⸰ [hidden] | [visible] »`. Dragging while a section is collapsed lands items in the wrong section.
+- Right-click `»`: Always Use Bar, Launch at Login, Quit.
 
 ## Permission (asked on first toggle)
 - Accessibility: finding other apps' items and forwarding clicks. Without it Notchy just expands in place.

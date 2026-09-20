@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar = StatusBarController()
         statusBar.setState(.collapsed)
         statusBar.onToggle = { [weak self] showAll in self?.toggle(showAll: showAll) }
+        statusBar.onShowAll = { [weak self] in self?.showAllInPanel() }
         panel.onSelect = { [weak self] item in self?.forward(item) }
         panel.onDismiss = { [weak self] in
             // Panel closed without a click: nothing was revealed, stay collapsed.
@@ -19,6 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Toggle decision
 
+    /// Click: expand in place so macOS shows as many items as fit right of the notch; whatever it drops
+    /// behind the notch lands in the bar left of the notch (`showDroppedItems`). ⌥-click: same with the
+    /// always-hidden section too (arrange mode, both dividers visible). "Always Use Bar": hidden items go
+    /// straight to the bar, nothing moves.
     private func toggle(showAll: Bool) {
         if panel.isVisible { panel.hide() }
         if statusBar.state != .collapsed && !showAll {
@@ -26,49 +31,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let target: BarState = showAll ? .all : .expanded
-        let items = scan()
-        Diagnostics.log("app", "toggle showAll=\(showAll) state=\(statusBar.state) toggle=\(Int(statusBar.toggleFrame?.minX ?? -1)) hidden=\(Int(statusBar.hiddenSpacerFrame?.minX ?? -1)) always=\(Int(statusBar.alwaysHiddenSpacerFrame?.minX ?? -1)) sections=\(items.map { "\($0.ownerName):\(section(of: $0))" })")
-        let toReveal = items.filter { section(of: $0) == .hidden || (showAll && section(of: $0) == .alwaysHidden) }
-        // Only the visible section between our hidden spacer and the toggle takes room from the hidden items;
-        // system items right of the toggle are already outside `toggleMinX`.
-        let toggleMinX = statusBar.toggleFrame?.minX ?? .greatestFiniteMagnitude
-        let visible = items.filter { section(of: $0) == .visible && $0.frame.minX < toggleMinX }
-
-        if toReveal.isEmpty || (!statusBar.alwaysUseBar && fits(toReveal, visible: visible)) {
-            statusBar.setState(target)
-            showDroppedItems(after: target)
-            return
+        Diagnostics.log("app", "toggle showAll=\(showAll) state=\(statusBar.state) toggle=\(Int(statusBar.toggleFrame?.minX ?? -1)) hidden=\(Int(statusBar.hiddenSpacerFrame?.minX ?? -1)) always=\(Int(statusBar.alwaysHiddenSpacerFrame?.minX ?? -1))")
+        if statusBar.alwaysUseBar, !showAll {
+            let hidden = scan().filter { section(of: $0) == .hidden }
+            if !hidden.isEmpty { return showPanel(hidden, below: false) }
         }
-        showPanel(toReveal)
+        statusBar.setState(target)
+        showDroppedItems(after: target)
     }
 
-    /// Safety net after expanding in place: macOS silently drops the leftmost items behind the notch when
-    /// the row is too long (AX widths can lie, Control Center items grow). Rescan once layout settled and
-    /// put anything still off screen into the bar. In `.expanded` the always-hidden section is legitimately
-    /// pushed away and must not count.
+    /// Right-click → "Show All Items": every hidden and always-hidden item in the panel below the toggle,
+    /// menu bar untouched.
+    private func showAllInPanel() {
+        if panel.isVisible { return panel.hide() }
+        let items = scan().filter { section(of: $0) != .visible }
+        if items.isEmpty { return statusBar.setState(.all) } // no permission yet: fall back to in place
+        showPanel(items, below: true)
+    }
+
+    /// After expanding in place macOS silently drops the leftmost items behind the notch when the row is
+    /// too long. Rescan once layout settled and put anything still off screen into the bar. In `.expanded`
+    /// the always-hidden section is legitimately pushed away and must not count.
     private func showDroppedItems(after state: BarState) {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
             guard statusBar.state == state, !panel.isVisible else { return }
             let dropped = scan().filter { !$0.isOnScreen && (state == .all || section(of: $0) != .alwaysHidden) }
             Diagnostics.log("app", "dropped after \(state): \(dropped.map(\.title))")
-            if !dropped.isEmpty { showPanel(dropped) }
+            if !dropped.isEmpty { showPanel(dropped, below: false) }
         }
     }
 
-    private func fits(_ hidden: [MenuBarItem], visible: [MenuBarItem]) -> Bool {
-        guard let toggle = statusBar.toggleFrame, let screen = NSScreen.main else { return true }
-        let leftBound = screen.auxiliaryTopRightArea?.minX ?? screen.frame.minX
-        let available = Layout.availableWidth(
-            toggleMinX: toggle.minX, leftBound: leftBound, visibleWidths: visible.map(\.frame.width))
-        let ok = Layout.fits(hiddenWidths: hidden.map(\.frame.width), available: available)
-        Diagnostics.log("app", "fit check: \(hidden.count) hidden, available \(Int(available)) → \(ok)")
-        return ok
-    }
-
-    private func showPanel(_ items: [MenuBarItem]) {
+    private func showPanel(_ items: [MenuBarItem], below: Bool) {
         guard let toggle = statusBar.toggleFrame, let screen = NSScreen.main else { return }
-        panel.show(items: items, toggleFrame: toggle, on: screen)
+        panel.show(items: items, toggleFrame: toggle, on: screen, below: below)
     }
 
     // MARK: - Click forwarding

@@ -25,24 +25,24 @@ Sections = position of other apps' items relative to the spacers (`Layout.sectio
 macOS remembers positions. First launch seeds `NSStatusItem Preferred Position <autosaveName>` defaults so
 spacers start left of the toggle.
 
-## Toggle behaviour (auto mode)
-Click ⌃ while collapsed: scan items (`ItemScanner`), sum widths of hidden section, compare with
-`Layout.availableWidth` (left bound = `NSScreen.auxiliaryTopRightArea?.minX ?? screen.minX`; only
-visible-section items left of the toggle count).
-- fits and `alwaysUseBar == false` → `setState(.expanded)`
-- else → `OverflowPanel.show` with hidden(+always hidden when ⌥) items
+## Toggle behaviour
+Click ⌃ while collapsed → `setState(.expanded)`: macOS shows as many hidden items as fit right of the notch.
+400 ms later rescan (`showDroppedItems`); items still off screen (macOS dropped them behind the notch) go
+into the bar left of the notch. ⌥-click → same with `.all` (arrange mode: both dividers visible for ⌘-drag).
+`alwaysUseBar` → hidden items go straight to the bar, nothing expands.
 Click ⌃ while expanded/all or panel visible → collapse / hide panel.
-After expanding in place, rescan once (400 ms) and show items macOS still dropped behind the notch in the bar
-(`showDroppedItems`; always-hidden items are ignored in `.expanded` since the spacer pushes them on purpose).
+Right-click → "Show All Items": every hidden + always-hidden item in the panel *below* the toggle
+(`below: true`), menu bar untouched. Without Accessibility the toggle simply expands in place.
 
 ## Overflow bar
-`NSPanel`, non-activating, level `.popUpMenu`, 22 pt-high cells (app icon + item title), hover highlight,
+`NSPanel`, non-activating, level `.popUpMenu`, 22 pt-high cells (app icon, plus title when it differs from the
+app name; title in tooltip), hover highlight,
 dismiss on click-outside / Esc. Two placements, decided per show:
 1. **Left of the notch, inside the menu bar** (Ice / Bartender style): one row, no backdrop, menu-bar height,
    right-aligned to `auxiliaryTopLeftArea.maxX` with `Layout.notchGap` clear of the notch and of the frontmost
    app's last menu title (`ItemScanner.frontmostMenuMaxX`, AX `AXMenuBar`). `Layout.leftOfNotchX` returns
    `nil` when the row does not fit.
-2. **Fallback** (no notch, or does not fit): right-aligned under the toggle, wraps if wider than 80 % of the
+2. **Below the toggle** (`below: true`, no notch, or does not fit): right-aligned under the toggle, wraps if wider than 80 % of the
    screen, translucent backdrop.
 Click → `ItemClicker.click`: reveal section, poll until item on screen, post CGEvent click at its centre.
 Still off screen (macOS overflow) → `kAXPressAction` on the item's element (menu may open at screen edge).

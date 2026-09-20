@@ -38,8 +38,8 @@ final class OverflowPanel {
     }
 
     /// Shows (or refreshes) the bar. Left of the notch inside the menu bar when everything fits in one
-    /// row there, else right-aligned under `toggleFrame` (AppKit coords) on `screen`.
-    func show(items: [MenuBarItem], toggleFrame: CGRect, on screen: NSScreen) {
+    /// row there, else (or when `below`) right-aligned under `toggleFrame` (AppKit coords) on `screen`.
+    func show(items: [MenuBarItem], toggleFrame: CGRect, on screen: NSScreen, below: Bool = false) {
         content.subviews.filter { $0 !== backdrop }.forEach { $0.removeFromSuperview() }
         let pad: CGFloat = 6, gap: CGFloat = 4, rowH: CGFloat = 22
         let cells = items.map { item in
@@ -51,7 +51,7 @@ final class OverflowPanel {
 
         // 1. Menu bar strip left of the notch: one row, no backdrop, looks like native items.
         let oneRow = cells.reduce(0) { $0 + $1.frame.width } + gap * CGFloat(max(cells.count - 1, 0))
-        if let area = screen.auxiliaryTopLeftArea,
+        if !below, let area = screen.auxiliaryTopLeftArea,
            let x = Layout.leftOfNotchX(area: area, appMenuMaxX: ItemScanner.frontmostMenuMaxX() ?? area.minX, width: oneRow) {
             backdrop.isHidden = true
             panel.hasShadow = false
@@ -135,7 +135,8 @@ private final class KeyPanel: NSPanel {
     }
 }
 
-/// One menu bar item: 16 pt app icon + title, with hover highlight.
+/// One menu bar item: 16 pt app icon, plus title when it says more than the app name (Control Center's
+/// "Wi‑Fi" / "Battery"), with hover highlight. Title always in the tooltip.
 private final class ItemCell: NSView {
     let item: MenuBarItem
     var onClick: ((MenuBarItem) -> Void)?
@@ -148,15 +149,19 @@ private final class ItemCell: NSView {
         layer?.cornerRadius = 6
         let icon = NSImageView(frame: CGRect(x: 3, y: 3, width: 16, height: 16))
         icon.image = item.icon
-        let label = NSTextField(labelWithString: item.title)
-        label.font = .menuBarFont(ofSize: 0)
-        label.lineBreakMode = .byTruncatingTail
-        label.sizeToFit()
-        let labelWidth = min(label.frame.width, 140)
-        label.frame = CGRect(x: 22, y: (h - label.frame.height) / 2, width: labelWidth, height: label.frame.height)
         addSubview(icon)
-        addSubview(label)
-        frame.size = CGSize(width: 22 + labelWidth + 4, height: h)
+        toolTip = item.title
+        var labelWidth: CGFloat = 0
+        if item.title != item.ownerName {
+            let label = NSTextField(labelWithString: item.title)
+            label.font = .menuBarFont(ofSize: 0)
+            label.lineBreakMode = .byTruncatingTail
+            label.sizeToFit()
+            labelWidth = min(label.frame.width, 140) + 3
+            label.frame = CGRect(x: 22, y: (h - label.frame.height) / 2, width: labelWidth - 3, height: label.frame.height)
+            addSubview(label)
+        }
+        frame.size = CGSize(width: 22 + labelWidth, height: h)
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
     }

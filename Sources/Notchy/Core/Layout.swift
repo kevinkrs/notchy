@@ -38,16 +38,6 @@ enum Layout {
         return .visible
     }
 
-    /// Horizontal room left for hidden items once expanded: from the left bound of the usable
-    /// menu bar area (right of the notch) to the toggle, minus what the visible section already uses.
-    static func availableWidth(toggleMinX: CGFloat, leftBound: CGFloat, visibleWidths: [CGFloat]) -> CGFloat {
-        toggleMinX - leftBound - visibleWidths.reduce(0, +) - spacerLength
-    }
-
-    static func fits(hiddenWidths: [CGFloat], available: CGFloat) -> Bool {
-        hiddenWidths.reduce(0, +) <= available
-    }
-
     /// Gap kept between the frontmost app's last menu title and the bar, and between the bar and the notch.
     static let notchGap: CGFloat = 12
 
